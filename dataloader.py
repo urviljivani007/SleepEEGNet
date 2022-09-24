@@ -316,30 +316,30 @@ class SeqDataLoader(object):
         # subject_files.sort()
 
         # Load training and validation sets
-        print ("\n========== [Fold-{}] ==========\n".format(self.fold_idx))
-        print ("Load training set:")
+        print("\n========== [Fold-{}] ==========\n".format(self.fold_idx))
+        print("Load training set:")
         data_train, label_train = self._load_npz_list_files(train_files)
-        print (" ")
-        print ("Load Test set:")
+        print(" ")
+        print("Load Test set:")
         data_test, label_test = self._load_npz_list_files(subject_files)
-        print (" ")
+        print(" ")
 
-        print ("Training set: n_subjects={}".format(len(data_train)))
+        print("Training set: n_subjects={}".format(len(data_train)))
         n_train_examples = 0
         for d in data_train:
-            print d.shape
+            print(d.shape)
             n_train_examples += d.shape[0]
-        print ("Number of examples = {}".format(n_train_examples))
+        print("Number of examples = {}".format(n_train_examples))
         self.print_n_samples_each_class(np.hstack(label_train),self.classes)
-        print (" ")
-        print ("Test set: n_subjects = {}".format(len(data_test)))
+        print(" ")
+        print("Test set: n_subjects = {}".format(len(data_test)))
         n_test_examples = 0
         for d in data_test:
-            print d.shape
+            print(d.shape)
             n_test_examples += d.shape[0]
-        print ("Number of examples = {}".format(n_test_examples))
+        print("Number of examples = {}".format(n_test_examples))
         self.print_n_samples_each_class(np.hstack(label_test),self.classes)
-        print (" ")
+        print(" ")
 
         data_train = np.vstack(data_train)
         label_train = np.hstack(label_train)
@@ -434,7 +434,7 @@ class SeqDataLoader(object):
 
             return data, labels
 
-        print ("Load data_2013 from: {}".format(subject_files))
+        print("Load data_2013 from: {}".format(subject_files))
         data, labels = load_npz_list_files(subject_files)
 
         return data, labels
@@ -445,4 +445,4 @@ class SeqDataLoader(object):
         unique_labels = np.unique(labels)
         for c in unique_labels:
             n_samples = len(np.where(labels == c)[0])
-            print ("{}: {}".format(class_dict[c], n_samples))
+            print("{}: {}".format(class_dict[c], n_samples))
