@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.io as spio
-from  sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import confusion_matrix, f1_score
 import random
 import time
@@ -10,14 +8,13 @@ from datetime import datetime
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
 import tensorflow as tf
-
+import tensorflow_addons as tfa
 from imblearn.over_sampling import SMOTE
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import ADASYN
-from sklearn.model_selection import train_test_split
 from tensorflow.python.layers.core import Dense
 from tensorflow_addons.seq2seq import beam_search_decoder
 from dataloader import SeqDataLoader
+from collections import namedtuple
+
 import argparse
 
 def batch_data(x, y, batch_size):
@@ -179,8 +176,8 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
     # lstm_size = 128
     # # Get lstm cell output
     # # Add LSTM layers
-    # lstm_cell = tf.contrib.rnn.BasicLSTMCell(lstm_size)
-    # data_input_embed, states = tf.contrib.rnn.static_rnn(lstm_cell, lstm_in, dtype=tf.float32)
+    # lstm_cell = tfa.rnn.BasicLSTMCell(lstm_size)
+    # data_input_embed, states = tfa.rnn.static_rnn(lstm_cell, lstm_in, dtype=tf.float32)
     # data_input_embed = tf.stack(data_input_embed, 1)
     # shape = data_input_embed.get_shape().as_list()
     # embed_size = 10 #128 lstm_size # shape[1]*shape[2]
@@ -195,26 +192,26 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
         if not hparams.bidirectional:
 
             # Regular approach with LSTM units
-            # encoder_cell = tf.contrib.rnn.LSTMCell(hparams.num_units)
+            # encoder_cell = tfa.rnn.LSTMCell(hparams.num_units)
             # encoder_cell = tf.nn.rnn_cell.MultiRNNCell([encoder_cell] * hparams.lstm_layers)
             def lstm_cell():
-                lstm = tf.contrib.rnn.LSTMCell(hparams.num_units)
+                lstm = tfa.rnn.LSTMCell(hparams.num_units)
                 return lstm
-            encoder_cell = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
+            encoder_cell = tfa.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(encoder_cell, inputs=data_input_embed, dtype=tf.float32)
 
         else:
 
             # Using a bidirectional LSTM architecture instead
-            # enc_fw_cell = tf.contrib.rnn.LSTMCell(hparams.num_units)
-            # enc_bw_cell = tf.contrib.rnn.LSTMCell(hparams.num_units)
+            # enc_fw_cell = tfa.rnn.LSTMCell(hparams.num_units)
+            # enc_bw_cell = tfa.rnn.LSTMCell(hparams.num_units)
 
             def lstm_cell():
-                lstm = tf.contrib.rnn.LSTMCell(hparams.num_units)
+                lstm = tfa.rnn.LSTMCell(hparams.num_units)
                 return lstm
 
-            stacked_cell_fw = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)],state_is_tuple=True)
-            stacked_cell_bw = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)],state_is_tuple=True)
+            stacked_cell_fw = tfa.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)],state_is_tuple=True)
+            stacked_cell_bw = tfa.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)],state_is_tuple=True)
 
 
             ((enc_fw_out, enc_bw_out), (enc_fw_final, enc_bw_final)) = tf.nn.bidirectional_dynamic_rnn(
@@ -226,7 +223,7 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
             for layer in range(hparams.lstm_layers):
                 enc_fin_c = tf.concat((enc_fw_final[layer].c, enc_bw_final[layer].c), 1)
                 enc_fin_h = tf.concat((enc_fw_final[layer].h, enc_bw_final[layer].h), 1)
-                encoder_final_state.append(tf.contrib.rnn.LSTMStateTuple(c=enc_fin_c, h=enc_fin_h))
+                encoder_final_state.append(tfa.rnn.LSTMStateTuple(c=enc_fin_c, h=enc_fin_h))
 
             encoder_state = tuple(encoder_final_state)
             encoder_outputs = tf.concat((enc_fw_out, enc_bw_out), 2)
@@ -237,29 +234,29 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
         output_layer = Dense(
             len(char2numY), use_bias=False)
         decoder_lengths = np.ones((hparams.batch_size), dtype=np.int32) * (hparams.max_time_step+1)
-        training_helper = tf.contrib.seq2seq.TrainingHelper(decoder_emb_inputs, decoder_lengths)
+        training_helper = tfa.seq2seq.TrainingHelper(decoder_emb_inputs, decoder_lengths)
 
         if not hparams.bidirectional:
-            # decoder_cell = tf.contrib.rnn.LSTMCell(hparams.num_units)
+            # decoder_cell = tfa.rnn.LSTMCell(hparams.num_units)
             def lstm_cell():
-                lstm = tf.contrib.rnn.LSTMCell(hparams.num_units)
+                lstm = tfa.rnn.LSTMCell(hparams.num_units)
                 return lstm
-            decoder_cells = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
+            decoder_cells = tfa.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
 
         else:
-            # decoder_cell = tf.contrib.rnn.LSTMCell(2 * hparams.num_units)
+            # decoder_cell = tfa.rnn.LSTMCell(2 * hparams.num_units)
             def lstm_cell():
-                lstm = tf.contrib.rnn.LSTMCell(2 * hparams.num_units)
+                lstm = tfa.rnn.LSTMCell(2 * hparams.num_units)
                 return lstm
-            decoder_cells = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
+            decoder_cells = tfa.rnn.MultiRNNCell([lstm_cell() for _ in range(hparams.lstm_layers)])
 
         if hparams.use_attention:
             # Create an attention mechanism
-            attention_mechanism = tf.contrib.seq2seq.LuongAttention(
+            attention_mechanism = tfa.seq2seq.LuongAttention(
                 hparams.num_units * 2 if hparams.bidirectional else hparams.num_units , encoder_outputs,
                 memory_sequence_length=None)
 
-            decoder_cells = tf.contrib.seq2seq.AttentionWrapper(
+            decoder_cells = tfa.seq2seq.AttentionWrapper(
                 decoder_cells, attention_mechanism,
                 attention_layer_size=hparams.attention_size,alignment_history=True)
 
@@ -268,11 +265,11 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
 
 
         # Basic Decoder and decode
-        decoder = tf.contrib.seq2seq.BasicDecoder(
+        decoder = tfa.seq2seq.BasicDecoder(
             decoder_cells, training_helper, encoder_state,
             output_layer=output_layer)
 
-        dec_outputs, _final_state, _final_sequence_lengths = tf.contrib.seq2seq.dynamic_decode(decoder,impute_finished=True)
+        dec_outputs, _final_state, _final_sequence_lengths = tfa.seq2seq.dynamic_decode(decoder,impute_finished=True)
 
         # dec_outputs, _ = tf.nn.dynamic_rnn(decoder_cell, inputs=decoder_emb_inputs, initial_state=encoder_state)
 
@@ -283,17 +280,17 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
     end_token = char2numY['<EOD>']
     if not hparams.use_beamsearch_decode:
 
-        inference_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+        inference_helper = tfa.seq2seq.GreedyEmbeddingHelper(
             decoder_embedding,
             start_tokens,end_token)
 
         # Inference Decoder
-        inference_decoder = tf.contrib.seq2seq.BasicDecoder(
+        inference_decoder = tfa.seq2seq.BasicDecoder(
             decoder_cells, inference_helper, encoder_state,
             output_layer=output_layer)
     else:
 
-        encoder_state = tf.contrib.seq2seq.tile_batch(encoder_state, multiplier=hparams.beam_width)
+        encoder_state = tfa.seq2seq.tile_batch(encoder_state, multiplier=hparams.beam_width)
         decoder_initial_state = decoder_cells.zero_state(hparams.batch_size * hparams.beam_width, tf.float32).clone(cell_state=encoder_state)
 
         inference_decoder = beam_search_decoder.BeamSearchDecoder(cell=decoder_cells,
@@ -305,7 +302,7 @@ def build_network(hparams,char2numY,inputs,dec_inputs,keep_prob_=0.5,):
                                                                   output_layer=output_layer)
 
     # Dynamic decoding
-    outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(
+    outputs, _, _ = tfa.seq2seq.dynamic_decode(
         inference_decoder,impute_finished = False, maximum_iterations=hparams.output_max_length)
     pred_outputs = outputs.sample_id
     if  hparams.use_beamsearch_decode:
@@ -402,11 +399,11 @@ def build_whole_model(hparams,char2numY,inputs, targets,dec_inputs, keep_prob_):
         for i in range(logits.get_shape().as_list()[-1]):
             class_fill_targets = tf.fill(tf.shape(targets), i)
             weights_i = tf.cast(tf.equal(targets, class_fill_targets), "float")
-            loss_is.append(tf.contrib.seq2seq.sequence_loss(logits, targets, weights_i,average_across_batch=False))
+            loss_is.append(tfa.seq2seq.sequence_loss(logits, targets, weights_i,average_across_batch=False))
 
         loss = tf.reduce_sum(loss_is,axis=0)
 
-        # loss = tf.contrib.seq2seq.sequence_loss(logits, targets, tf.ones([hparams.batch_size, hparams.max_time_step+1])) #+1 is because of the <EOD> token
+        # loss = tfa.seq2seq.sequence_loss(logits, targets, tf.ones([hparams.batch_size, hparams.max_time_step+1])) #+1 is because of the <EOD> token
         # Optimizer
         loss = tf.reduce_mean(loss)+lossL2
         optimizer = tf.train.RMSPropOptimizer(1e-3).minimize(loss)
@@ -719,22 +716,22 @@ def run_program(hparams,FLAGS):
 
 def main(args=None):
 
-    FLAGS = tf.app.flags.FLAGS
+    FLAGS = tf.compat.v1.app.flags.FLAGS
 
     # outputs_eeg_fpz_cz
-    tf.app.flags.DEFINE_string('data_dir', 'data_2013/eeg_fpz_cz',
+    tf.compat.v1.app.flags.DEFINE_string('data_dir', 'data_2013/eeg_fpz_cz',
                                """Directory where to load training data_2013.""")
-    tf.app.flags.DEFINE_string('output_dir', 'outputs_2013/outputs_eeg_fpz_cz',
+    tf.compat.v1.app.flags.DEFINE_string('output_dir', 'outputs_2013/outputs_eeg_fpz_cz',
                                """Directory where to save trained models """
                                """and outputs.""")
-    tf.app.flags.DEFINE_integer('num_folds', 20,
+    tf.compat.v1.app.flags.DEFINE_integer('num_folds', 20,
                                 """Number of cross-validation folds.""")
-    tf.app.flags.DEFINE_list('classes', ['W', 'N1', 'N2', 'N3', 'REM'],  """classes""")
-    tf.app.flags.DEFINE_string('checkpoint_dir', 'checkpoints-seq2seq-sleep-EDF', """Directory to save checkpoints""")
+    tf.compat.v1.app.flags.DEFINE_list('classes', ['W', 'N1', 'N2', 'N3', 'REM'],  """classes""")
+    tf.compat.v1.app.flags.DEFINE_string('checkpoint_dir', 'checkpoints-seq2seq-sleep-EDF', """Directory to save checkpoints""")
     # tf.app.flags.DEFINE_string('ckpt_name', 'seq2seq_sleep.ckpt',"""Check point name""")
 
     # hyperparameters
-    hparams = tf.contrib.training.HParams(
+    hparams = get_hparams(
         epochs=120,  # 300
         batch_size=20,  # 10
         num_units=128,
@@ -754,8 +751,12 @@ def main(args=None):
     )
     # classes = ['W', 'N1', 'N2', 'N3', 'REM']
     run_program(hparams,FLAGS)
+
+def get_hparams(**kwargs):
+    return namedtuple('GenericDict', kwargs.keys())(**kwargs)
+
 if __name__ == "__main__":
-     tf.app.run()
+     tf.compat.v1.app.run()
 
 
 
