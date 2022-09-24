@@ -10,12 +10,14 @@ from datetime import datetime
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import cohen_kappa_score
 import tensorflow as tf
+import tensorflow_addons as tfa
+
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import ADASYN
 from sklearn.model_selection import train_test_split
 from tensorflow.python.layers.core import Dense
-from tensorflow.contrib.seq2seq.python.ops import beam_search_decoder
+from tfa.seq2seq import beam_search_decoder
 from dataloader import SeqDataLoader
 import argparse
 
