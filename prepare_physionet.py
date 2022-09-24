@@ -1,3 +1,8 @@
+'''
+https://github.com/akaraspt/deepsleepnet
+Copyright 2017 Akara Supratak and Hao Dong.  All rights reserved.
+'''
+
 import argparse
 import glob
 import math
@@ -59,9 +64,9 @@ EPOCH_SEC_SIZE = 30
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="/data/physionet_sleep",
+    parser.add_argument("--data_dir", type=str, default="data_2013/",
                         help="File path to the CSV or NPY file that contains walking data.")
-    parser.add_argument("--output_dir", type=str, default="/data/physionet_sleep/eeg_fpz_cz",
+    parser.add_argument("--output_dir", type=str, default="data_2013/eeg_fpz_cz",
                         help="Directory where to save outputs.")
     parser.add_argument("--select_ch", type=str, default="EEG Fpz-Cz",
                         help="File path to the trained model used to estimate walking speeds.")
@@ -88,6 +93,9 @@ def main():
     for i in range(len(psg_fnames)):
         # if not "ST7171J0-PSG.edf" in psg_fnames[i]:
         #     continue
+        # i = ii+80
+        # if i >= len(psg_fnames):
+        #     break
 
         raw = read_raw_edf(psg_fnames[i], preload=True, stim_channel=None)
         sampling_rate = raw.info['sfreq']
@@ -140,8 +148,7 @@ def main():
                 remove_idx.append(idx)
 
                 print("Remove onset:{}, duration:{}, label:{} ({})".format(
-                    onset_sec, duration_sec, label, ann_str
-                ))
+                    onset_sec, duration_sec, label, ann_str))
         labels = np.hstack(labels)
         
         print("before remove unwanted: {}".format(np.arange(len(raw_ch_df)).shape))
@@ -192,10 +199,10 @@ def main():
         if start_idx < 0: start_idx = 0
         if end_idx >= len(y): end_idx = len(y) - 1
         select_idx = np.arange(start_idx, end_idx+1)
-        print(("Data before selection: {}, {}".format(x.shape, y.shape)))
+        print("Data before selection: {}, {}".format(x.shape, y.shape))
         x = x[select_idx]
         y = y[select_idx]
-        print(("Data after selection: {}, {}".format(x.shape, y.shape)))
+        print("Data after selection: {}, {}".format(x.shape, y.shape))
 
         # Save
         filename = ntpath.basename(psg_fnames[i]).replace("-PSG.edf", ".npz")

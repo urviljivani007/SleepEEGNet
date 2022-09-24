@@ -102,7 +102,7 @@ class BaseEDFReader:
 
 
   def read_raw_record(self):
-    '''Read a record with data and return a list containing arrays with raw
+    '''Read a record with data_2013 and return a list containing arrays with raw
     bytes.
     '''
     result = []

@@ -58,7 +58,7 @@ def evaluate_metrics(cm):
 
     print("Sample: {}".format(int(np.sum(cm))))
     for index_ in range(n_classes):
-        print ("{}: {}".format(classes[index_], int(TP[index_] + FN[index_])))
+        print("{}: {}".format(classes[index_], int(TP[index_] + FN[index_])))
 
 
     return ACC_macro,ACC, F1_macro, F1, TPR, TNR, PPV
@@ -130,10 +130,10 @@ def perf_overall(data_dir):
             y_true.extend(f_y_true)
             y_pred.extend(f_y_pred)
 
-            print("File: {}".format(fpath))
+            print ("File: {}".format(fpath))
             cm = confusion_matrix(f_y_true, f_y_pred, labels=[0, 1, 2, 3, 4])
             print_performance(cm)
-    print(" ")
+    print (" ")
 
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
